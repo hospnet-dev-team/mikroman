@@ -6,7 +6,7 @@
 # Author: sepehr.ha@gmail.com
 
 import time
-from libs import util
+from libs import util,firm_lib
 from libs.db import db_tasks,db_device
 import logging
 import queue
@@ -34,7 +34,7 @@ def updater():
                 if ISPRO:
                     t = Thread(target=utilpro.update_device, args=(dev,{"version_to_install":dev.firmware_to_install},False, q))
                 else:
-                    t = Thread(target=util.update_device, args=(dev, q))
+                    t = Thread(target=firm_lib.update_device, args=(dev, q))
                 t.start()
                 threads.append(t)
             for t in threads:

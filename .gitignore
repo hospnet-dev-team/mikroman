@@ -167,3 +167,7 @@ cython_debug/
 
 *pro_api*
 *pro.py
+*pro-reqs.txt
+*update_gen.sh
+*.zip
+back/

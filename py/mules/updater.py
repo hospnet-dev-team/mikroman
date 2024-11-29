@@ -33,7 +33,6 @@ def install_package(package):
 
 
 def set_get_install_date():
-    
     install_date=False
     try:
         install_date=db_sysconfig.get_sysconfig('install_date')
@@ -43,7 +42,6 @@ def set_get_install_date():
         install_date=datetime.datetime.now()
         db_sysconfig.set_sysconfig('install_date',install_date.strftime("%Y-%m-%d %H:%M:%S"))
         install_date=install_date.strftime("%Y-%m-%d %H:%M:%S")
-    
     return install_date
 
 # Example usage
@@ -124,8 +122,6 @@ def main():
             username = db_sysconfig.get_sysconfig('username')
         except:
             log.error("No username found")
-            time.sleep(300)
-            continue
         # util.send_mikrowizard_request(params)
         if not username or username.strip()=="":
             log.error("No username found")

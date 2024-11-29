@@ -8,12 +8,13 @@
 from flask import request, jsonify,session,send_file
 from playhouse.shortcuts import model_to_dict
 import datetime
-from libs.db import db_tasks,db_sysconfig,db_device,db_firmware,db_syslog
-from libs import util
+from libs.db import db_tasks,db_sysconfig,db_firmware,db_syslog
+from libs import util,firm_lib
 from libs.webutil import app, login_required, get_myself,buildResponse,get_myself,get_ip,get_agent
 import bgtasks
 import re
 import logging
+
 log = logging.getLogger("api.firmware")
 import json
 
@@ -85,7 +86,7 @@ def get_firms():
 def get_downloadable_firms():
     """get list of availble Firmwares from Mikrotik Official webstire"""
     input = request.json or {}
-    versions=util.get_mikrotik_versions()
+    versions=firm_lib.get_mikrotik_versions()
     versions = sorted(versions, key=lambda x: [int(y) if y.isdigit() else int(re.sub(r'\D', '', y)) for y in x.split('.')])
 
     return buildResponse({"versions":versions}, 200)
@@ -104,6 +105,24 @@ def download_firmware_to_repository():
         return buildResponse({'status': True}, 200)
     else:
         return buildResponse({'status': status}, 200)
+
+@app.route('/api/firmware/delete_from_repository', methods = ['POST'])
+@login_required(role='admin',perm={'settings':'full'})
+def delete_from_repository():
+    """Delete File from Repo"""
+    input = request.json or {}
+    id = input.get('id',False)
+    firmware=db_firmware.get_firm(id)
+    log.error(firmware)
+    if firmware:
+        #Delete file from location
+        location=firmware.location
+        res=util.delete_file(location)
+        log.error(res)
+        if res:
+            firmware.delete_instance()
+            return buildResponse({'status': True}, 200)    
+    return buildResponse({'status': False},200,error="Firm Already deleted")
 
 @app.route('/api/firmware/update_firmware_settings', methods = ['POST'])
 @login_required(role='admin',perm={'settings':'write'})

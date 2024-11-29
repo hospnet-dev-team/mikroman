@@ -7,7 +7,7 @@
 
 from uwsgidecorators import spool
 from playhouse.shortcuts import model_to_dict
-from libs import util
+from libs import util,firm_lib
 import time
 from libs.db import db_tasks,db_device,db_events,db_user_group_perm,db_device
 from threading import Thread
@@ -107,7 +107,7 @@ def update_device(*args, **kwargs):
                         dev.save()
                     if(not dev.update_availble):
                         continue
-                    t = Thread(target=util.update_device, args=(dev, q))
+                    t = Thread(target=firm_lib.update_device, args=(dev, q))
                     t.start()
                     threads.append(t)
                 for t in threads:
@@ -137,7 +137,7 @@ def download_firmware(*args, **kwargs):
                 num_threads = 1
                 q = queue.Queue()
                 threads = []
-                t = Thread(target=util.download_firmware_to_repository, args=(ver, q))
+                t = Thread(target=firm_lib.download_firmware_to_repository, args=(ver, q))
                 t.start()
                 threads.append(t)
                 for t in threads:
