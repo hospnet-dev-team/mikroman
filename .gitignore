@@ -171,3 +171,5 @@ cython_debug/
 *update_gen.sh
 *.zip
 back/
+license*
+public_key.pem
