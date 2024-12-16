@@ -80,14 +80,13 @@ def extract_zip_reload(filename,dst):
     p_status = p.wait()
     #install requirments
     try:
-        from libs import utilpro
-        ISPRO=True
         proreqs="/app/py/pro-reqs.txt"
         with open(proreqs, "r") as f:
             for line in f:
                 import_or_install(line.strip())
                 log.info("Installed {}".format(line.strip()))
                 time.sleep(1)
+        time.sleep(3)
     except ImportError:
         pass
     reqs="/app/reqs.txt"
@@ -100,8 +99,6 @@ def extract_zip_reload(filename,dst):
     os.remove(filename)
     #touch server reload file /app/reload
     Path('/app/reload').touch()
-
-
 
 def main():
     while True:

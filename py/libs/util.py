@@ -27,7 +27,6 @@ import urllib.request
 import hashlib
 import netifaces
 log = logging.getLogger("util")
-from libs import utilpro
 try:
     from libs import utilpro
     ISPRO=True

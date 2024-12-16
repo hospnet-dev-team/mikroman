@@ -11,10 +11,15 @@ from libs.util import ISPRO
 from libs.db import db,db_permissions,db_user_group_perm,db_groups,db_sysconfig,db_syslog
 
 import json
-from libs import utilpro, webutil,account
+from libs import webutil,account
 from libs.webutil import app, login_required, get_myself , buildResponse
 from libs.mschap3.mschap import nt_password_hash
-
+try:
+    from libs import utilpro
+    ISPRO=True
+except ImportError:
+    ISPRO=False
+    pass
 import logging
 log = logging.getLogger("api")
 
