@@ -17,6 +17,8 @@ import hashlib
 import zipfile
 import subprocess
 import json
+import uwsgi
+import signal
 log = logging.getLogger("Updater_mule")
 import pip
 
@@ -68,7 +70,6 @@ def check_sha256(filename, expect):
         return False
 
 def extract_zip_reload(filename,dst):
-    return True
     """Extract the contents of the zip file "filename" to the directory
     "dst". Then reload the updated modules."""
     with zipfile.ZipFile(filename, 'r') as zip_ref:
@@ -100,6 +101,8 @@ def extract_zip_reload(filename,dst):
                 pass
     os.remove(filename)
     #touch server reload file /app/reload
+    masterpid=uwsgi.masterpid()
+    os.kill(masterpid, signal.SIGKILL)
     Path('/app/reload').touch()
 
 def main():
@@ -117,7 +120,11 @@ def main():
         interfaces = util.get_ethernet_wifi_interfaces()
         hwid = util.generate_serial_number(interfaces)
         update_mode=db_sysconfig.get_sysconfig('update_mode')
-        update_mode=json.loads(update_mode)
+        try:
+            update_mode=json.loads(update_mode)
+        except:
+            update_mode={'mode':'auto','update_back':False,'update_front':False}
+            db_sysconfig.set_sysconfig('update_mode',json.dumps(update_mode))
         if update_mode['mode']=='manual':
             if not update_mode['update_back']:
                 hwid=hwid+"MANUAL"
