@@ -2,6 +2,6 @@
 
 def migrate(migrator, database, fake=False, **kwargs):
 
-    migrator.sql("""INSERT INTO public.sysconfig( key,  value) VALUES ( 'update_mode', '{"mode": "manual", "update_back": false, "update_front": false}')""")
+    migrator.sql("""INSERT INTO public.sysconfig( key,  value) VALUES ( 'update_mode', '{"mode": "auto", "update_back": false, "update_front": false}')""")
 
 
