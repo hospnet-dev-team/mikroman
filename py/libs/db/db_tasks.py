@@ -17,7 +17,8 @@ class Tasks(BaseModel):
     starttime = DateTimeField()
     endtime = DateTimeField()
     status = BooleanField()
-
+    action = TextField()
+    name = TextField()
     class Meta:
         # `indexes` is a tuple of 2-tuples, where the 2-tuples are
         # a tuple of column names to index and a boolean indicating
@@ -31,7 +32,6 @@ def update_check_status():
 #Get groups of device
 def update_job_status():
     return (Tasks.select().where(Tasks.signal == 110).get())
-
 
 #Get groups of device
 def backup_job_status():
@@ -51,6 +51,14 @@ def firmware_service_status():
 def exec_snipet_status():
     return (Tasks.select().where(Tasks.signal == 160).get())
 
+def get_running_tasks():
+    return (Tasks.select().where(Tasks.status == True))
+
+def get_task_by_signal(signal):
+    return (Tasks.select().where(Tasks.signal == signal).get())
+
+def get_all():
+    return (Tasks.select())
 
 class TaskResults(BaseModel):
     task_type = TextField()

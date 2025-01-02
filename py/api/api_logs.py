@@ -8,7 +8,7 @@
 from flask import request
 import datetime
 
-from libs.db import db,db_syslog,db_device,db_AA,db_events,db_sysconfig
+from libs.db import db,db_syslog,db_device,db_AA,db_events,db_sysconfig,db_tasks
 from libs.webutil import app,buildResponse,login_required
 import logging
 import operator
@@ -306,6 +306,7 @@ def dashboard_stats():
     """return dashboard data"""
     input = request.json
     versioncheck = input.get('versioncheck',False)
+    front_version = input.get('front_version',False)
     VERSIONFILE="_version.py"
     from _version import __version__
     res={}
@@ -342,13 +343,15 @@ def dashboard_stats():
     res['Devices']=devs.select().count()
     res['Auth']=auth.select().count()
     res['Acc']=acc.select().count()
-    res['Registred']=False
     res['license']=False
     username=False
     internet_connection=True
     # check for internet connection before getting data from website
     feedurl="https://mikrowizard.com/tag/Blog/feed/?orderby=latest"
     test_url="https://google.com"
+    update_mode=db_sysconfig.get_sysconfig('update_mode')
+    update_mode=json.loads(update_mode)
+    res['update_mode']=update_mode['mode']
     try:
         req = requests.get(test_url, timeout=(0.5,1)) 
         req.raise_for_status()
@@ -371,11 +374,32 @@ def dashboard_stats():
             if internet_connection:
                 response = requests.post(url, json=params)
                 response=response.json()
+                # log.error(response)
                 res['license']=response.get('license',False)
+                res['update_available']=response.get('available',False)
+                res['latest_version']=response.get('latest_version',False)
+                res['update_inprogress']=update_mode['update_back']
+            else:
+                res['license']='connection_error'
+                res['update_available']=False
+                res['latest_version']=False
+        except:
+            pass
+        try:
+            if front_version and internet_connection:
+                params['version']=front_version
+                params['front']=True
+                response = requests.post(url, json=params)
+                response=response.json()
+                res['front_update_available']=response.get('available',False)
+                res['front_latest_version']=response.get('latest_version',False)
+                res['front_update_inprogress']=update_mode['update_front']
         except:
             pass
     except:
         pass
+    res['front_update_available']=True
+    res['update_available']=True
     if username:
         res['username']=username
     res['blog']=[]
@@ -410,11 +434,12 @@ def dashboard_stats():
 def get_version():
     """return version info and serial in crypted format for front updater service"""
     VERSIONFILE="_version.py"
+    log.error("front_update_request")
     from _version import __version__
     res={}
     res['version']=__version__
     try:
-        res['username']=username = db_sysconfig.get_sysconfig('username')
+        res['username']=db_sysconfig.get_sysconfig('username')
     except:
         res['username']=False
     interfaces = util.get_ethernet_wifi_interfaces()
@@ -424,10 +449,21 @@ def get_version():
         install_date=db_sysconfig.get_sysconfig('install_date')
     except:
         pass
+    update_mode=db_sysconfig.get_sysconfig('update_mode') 
+    update_mode=json.loads(update_mode)
     if install_date:
-        res['serial']=hwid + "-" + datetime.datetime.strptime(install_date, "%Y-%m-%d %H:%M:%S").strftime("%Y%m%d")
+        if update_mode['mode']=='manual':
+            if not update_mode['update_front']:
+                hwid=hwid+"MANUAL"
+            else:
+                update_mode['update_front']=False
+                db_sysconfig.set_sysconfig('update_mode',json.dumps(update_mode))
+        res['serial'] = hwid + "-" + datetime.datetime.strptime(install_date, "%Y-%m-%d %H:%M:%S").strftime("%Y%m%d")
+        if update_mode=='update_now':
+            db_sysconfig.update_sysconfig('update_mode','manual')
     else:
         res['serial']=False
+    log.error(res)
     res=util.crypt_data(json.dumps(res))
     return buildResponse(res, 200)
 
@@ -477,8 +513,8 @@ def dashboard_traffic():
 
         temp=[]
         ids=['yA','yB']
-        colors=['#17522f','#171951']
-
+        colors=['#4caf50','#ff9800']
+        bgcolor=['rgba(76, 175, 80, 0.2)','rgba(255, 152, 0, 0.2)']
         datasets=[]
         lables=[]
         data_keys=['tx-{}'.format(interface),'rx-{}'.format(interface)]
@@ -491,7 +527,7 @@ def dashboard_traffic():
                 if len(lables) <= len(data[val]):
                     lables.append(datetime.datetime.fromtimestamp(d[0]/1000))
                 temp.append(round(d[1],1))
-            datasets.append({'label':val,'borderColor': colors[idx],'type': 'line','yAxisID': ids[idx],'data':temp,'unit':val.split("-")[0],'backgroundColor': colors[idx],'pointHoverBackgroundColor': '#fff'})
+            datasets.append({'label':val,'borderColor': colors[idx],'type': 'line','yAxisID': ids[idx],'data':temp,'unit':val.split("-")[0],'backgroundColor': bgcolor[idx],'pointHoverBackgroundColor': '#fff','fill': True})
             temp=[]
         res["data"]={'labels':lables,'datasets':datasets}
         
@@ -499,4 +535,17 @@ def dashboard_traffic():
         log.error(e)
         return buildResponse({'status': 'failed'}, 200, error=e)
         pass
+    return buildResponse(res,200)
+
+@app.route('/api/dashboard/tasks/running', methods = ['POST'])
+@login_required(role='admin', perm={'settings':'read'})
+def dashboard_tasks_running():
+    """return all running tasks"""
+    input = request.json
+    tasks=db_tasks.Tasks
+    try:
+        res=tasks.select().where(tasks.status=='running').dicts()
+    except Exception as e:
+        log.error(e)
+        return buildResponse({'status': 'failed'}, 200, error=e)
     return buildResponse(res,200)

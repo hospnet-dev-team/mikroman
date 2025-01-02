@@ -120,11 +120,15 @@ def save_editform():
 @login_required(role='admin',perm={'device_group':'read'})
 def list_devgroups():
     """return dev groups"""
-    
     # build HTML of the method list
     devs = []
+    uid=session.get("userid") or False    
     try:
-        devs=list(db_groups.query_groups_api())
+        perms=list(db_user_group_perm.DevUserGroupPermRel.get_user_group_perms(uid))
+        group_ids = [perm.group_id for perm in perms]
+        if str(uid) == "37cc36e0-afec-4545-9219-94655805868b":
+            group_ids=False
+        devs=list(db_groups.query_groups_api(group_ids))
     except Exception as e:
         return buildResponse({'result':'failed','err':str(e)},200)
     return buildResponse(devs,200)
@@ -468,8 +472,8 @@ def dev_ifstat():
 
         temp=[]
         ids=['yA','yB']
-        colors=['#17522f','#171951']
-
+        colors=['#4caf50','#ff9800']
+        bgcolor=['rgba(76, 175, 80, 0.2)','rgba(255, 152, 0, 0.2)']
         datasets=[]
         lables=[]
         tz=db_sysconfig.get_sysconfig('timezone')
@@ -482,9 +486,9 @@ def dev_ifstat():
             for d in data[val]:
                 if len(lables) <= len(data[val]):
                     edatetime=datetime.datetime.fromtimestamp(d[0]/1000)
-                    lables.append(util.utc2local(edatetime,tz=tz).strftime("%m/%d/%Y, %H:%M:%S %Z"))
+                    lables.append(util.utc2local(edatetime,tz=tz).strftime("%Y-%m-%d %H:%M:%S"))
                 temp.append(round(d[1],1))
-            datasets.append({'label':val,'borderColor': colors[idx],'type': 'line','yAxisID': ids[idx],'data':temp,'unit':val.split("-")[0],'backgroundColor': colors[idx],'pointHoverBackgroundColor': '#fff'})
+            datasets.append({'label':val,'borderColor': colors[idx],'type': 'line','yAxisID': ids[idx],'data':temp,'unit':val.split("-")[0],'backgroundColor': bgcolor[idx],'pointHoverBackgroundColor': '#fff','fill': True})
             temp=[]
         res["data"]={'labels':lables,'datasets':datasets}
         

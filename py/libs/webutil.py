@@ -261,10 +261,12 @@ def _is_role_atleast(myrole, rolebase, perm):
         return "userid" in session
     userperms=session.get("perms") or {}
     perms = { "None":1,"read":2, "write":3, "full":4}
-    res=True;
+    res=True
     if len(perm)>0:
         for key, value in perm.items():
             if key in userperms:
+                if userperms[key]=='none':
+                    res=False
                 res=res and perms[userperms[key]]>=perms[value]
             else:
                 return False

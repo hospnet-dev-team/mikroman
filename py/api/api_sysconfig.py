@@ -6,13 +6,16 @@
 # Author: sepehr.ha@gmail.com
 
 from flask import request
-
-from libs.db import db_sysconfig,db_syslog
+import uwsgi
+import signal
+import os
+from libs.db import db_sysconfig,db_syslog, db_tasks
 from libs import util
 from libs.webutil import app, login_required,buildResponse,get_myself,get_ip,get_agent
 import time
 import logging
 import json
+from pathlib import Path
 
 log = logging.getLogger("api.sysconfig")
 
@@ -44,8 +47,91 @@ def sysconfig_save_all():
             continue
         elif k=="default_password" or k=="default_user":
             v['value']=util.crypt_data(v['value'])
+        elif k=="update_mode":
+            v['value']=json.dumps(v['value'])
         data.append({"key":k,"value":v['value'],"modified":"NOW"})
     db_syslog.add_syslog_event(get_myself(), "Sys Config","Update", get_ip(),get_agent(),json.dumps(input))
     db_sysconfig.save_all(data)
     
     return buildResponse({"status":"success"})
+
+@app.route('/api/tasks/list', methods = ['POST'])
+@login_required(role='admin',perm={'settings':'read'})
+def tasks_list():
+    """get all tasks"""
+    input = request.json
+    res=[]
+    res=db_tasks.get_all().dicts()
+    for t in res:
+        t['name']=t['name'].replace("-"," ").replace("_"," ")
+    return buildResponse({"tasks":res})
+
+@app.route('/api/tasks/stop', methods = ['POST'])
+@login_required(role='admin',perm={'settings':'write'})
+def stop_task():
+    """get all tasks"""
+    input = request.json
+    task_signal = int(input['signal'])
+    task=db_tasks.get_task_by_signal(task_signal)
+    res=[]
+    #remove spooler file to stop task
+    #list files under directory
+    if not task:
+        return buildResponse({'result':'failed','err':"No task"}, 200)
+    spooldir=uwsgi.opt['spooler'].decode()+'/'+str(task_signal)
+    #list all files and remove them in spooldir
+    files = []
+    try:
+        if os.path.exists(spooldir):
+            for file in os.listdir(spooldir):
+                file_path = os.path.join(spooldir, file)
+                if os.path.isfile(file_path):
+                    os.remove(file_path)
+                    files.append(file)
+    except Exception as e:
+        log.error(f"Error removing spool files: {str(e)}")
+        return buildResponse({'result':'failed','err':str(e)}, 200)
+    pid=uwsgi.spooler_pid()
+    #kill pid to stop task
+    if task_signal not in [130,140]:
+        try:
+            os.kill(pid, signal.SIGTERM)  # Attempt graceful shutdown
+        except ProcessLookupError:
+            return buildResponse({'result':'failed','err':'Spooler not running'}, 200)
+        except PermissionError:
+            return buildResponse({'result':'failed','err':'Permission denied to reload spooler process'}, 200)
+        except Exception as e:
+            return buildResponse({'result':'failed','err':str(e)}, 200)
+    else:
+        task.action="cancel"
+        task.status=False
+        task.save()
+        return buildResponse({"status":"success"})
+    task.status=False
+    task.action="None"
+    task.save()
+    return buildResponse({"status":"success"})
+
+
+
+@app.route('/api/sysconfig/apply_update', methods = ['POST'])
+@login_required(role='admin',perm={'settings':'write'})
+def apply_update():
+    """apply update"""
+    input = request.json
+    action = input['action']
+    update_mode=db_sysconfig.get_sysconfig('update_mode')
+    update_mode=json.loads(update_mode)
+
+    if update_mode['mode']=='manual':
+        if action=='update_mikroman':
+            update_mode['update_back']=True
+            db_sysconfig.set_sysconfig('update_mode',json.dumps(update_mode))
+            Path('/app/reload').touch()
+            return buildResponse({"status":"success"})
+        if action=='update_mikrofront':
+            update_mode['update_front']=True
+            db_sysconfig.set_sysconfig('update_mode',json.dumps(update_mode))
+            return buildResponse({"status":"success"})
+    return buildResponse({"status":"success"})
+

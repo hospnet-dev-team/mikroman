@@ -9,6 +9,7 @@ from flask import request,session
 
 from libs.db import db_user_tasks,db_syslog,db_tasks,db_sysconfig
 from libs.webutil import app, login_required,buildResponse,get_myself,get_ip,get_agent
+from libs.db.db_groups import devs, get_devs_of_groups
 from functools import reduce
 import bgtasks
 import operator
@@ -117,8 +118,17 @@ def exec_snippet():
         return buildResponse({'status': 'failed'},200,error="Wrong name/desc")
     #check if cron is valid and correct
     taskdata={}
-    taskdata['memebrs']=members
-    taskdata['owner']=members
+    if selection_type=="devices":
+        taskdata['memebrs']=members
+    elif selection_type=="groups":
+        devs=get_devs_of_groups(members)
+        devids=[dev.id for dev in devs]
+        taskdata['memebrs']=devids
+    uid = session.get("userid") or False
+    if not uid:
+        return buildResponse({'result':'failed','err':"No User"}, 200)
+    taskdata['owner']=str(uid)
+    default_ip=db_sysconfig.get_sysconfig('default_ip')
     snipet=db_user_tasks.get_snippet(snippetid)
     if snipet:
         taskdata['snippet']={'id':snipet.id,'code':snipet.content,'description':snipet.description,'name':snipet.name}
@@ -144,12 +154,8 @@ def exec_snippet():
         }
         task=utasks.create(**data)
         status=db_tasks.exec_snipet_status().status
-        uid = session.get("userid") or False
-        default_ip=db_sysconfig.get_sysconfig('default_ip')
-        if not uid:
-            return buildResponse({'result':'failed','err':"No User"}, 200)
         if not status:
-            bgtasks.exec_snipet(task=task,default_ip=default_ip,devices=members,uid=uid)
+            bgtasks.exec_snipet(task=task,default_ip=default_ip,devices=taskdata['memebrs'],uid=uid)
             res={'status': True}
         else:
             res={'status': status}
@@ -158,8 +164,7 @@ def exec_snippet():
         return buildResponse([{'status': 'success'}],200)
     except Exception as e:
         log.error(e)
-        return buildResponse({'status': 'failed','massage':str(e)},200)    
-
+        return buildResponse({'status': 'failed','massage':str(e)},200)
     
 @app.route('/api/snippet/executed', methods = ['POST'])
 @login_required(role='admin',perm={'task':'write'})

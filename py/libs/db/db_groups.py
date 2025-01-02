@@ -105,9 +105,10 @@ def devs2(groupid):
             .join(DevGroupRel, on=DevGroupRel.device_id)
             .where(DevGroupRel.group_id == groupid)
             .order_by(Devices.name))
+
 def get_devs_of_groups(group_ids):
     try:
-        group_ids=[group.id for group in group_ids]
+        group_ids=[group if isinstance(group, int) else group.id for group in group_ids]
         if 1 in group_ids:
             return list(Devices
                 .select()
@@ -122,9 +123,12 @@ def get_devs_of_groups(group_ids):
         return []
         
 #get all groups including devices in each group
-def query_groups_api():
+def query_groups_api(group_ids=[]):
     t3=DevGroups.alias()
-    q=DevGroups.select(DevGroups.id,DevGroups.name,DevGroups.created,fn.array_agg(DevGroupRel.device_id)).join(DevGroupRel,JOIN.LEFT_OUTER, on=(DevGroupRel.group_id == DevGroups.id)).order_by(DevGroups.id).group_by(DevGroups.id)
+    if not isinstance(group_ids, list):
+        q=DevGroups.select(DevGroups.id,DevGroups.name,DevGroups.created,fn.array_agg(DevGroupRel.device_id)).join(DevGroupRel,JOIN.LEFT_OUTER, on=(DevGroupRel.group_id == DevGroups.id)).order_by(DevGroups.id).group_by(DevGroups.id)
+    else:
+        q=DevGroups.select(DevGroups.id,DevGroups.name,DevGroups.created,fn.array_agg(DevGroupRel.device_id)).join(DevGroupRel,JOIN.LEFT_OUTER, on=(DevGroupRel.group_id == DevGroups.id)).where(DevGroups.id << group_ids).order_by(DevGroups.id).group_by(DevGroups.id)
     return list(q.dicts())
 
 def get_groups_by_id(ids):
@@ -143,7 +147,6 @@ def delete_from_group(devids):
 
 def delete_device(devid):
     try:
-
         delete_from_group([devid])
         dev = get_object_or_none(Devices, id=devid)
         dev.delete_instance(recursive=True)

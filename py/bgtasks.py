@@ -38,9 +38,19 @@ def serialize_datetime(obj):
     if isinstance(obj, datetime.datetime): 
         return obj.isoformat() 
 
+def cancel_task(task_name='',task=0):
+    log.info(f"Canceling task {task_name}")
+    task.action='None'
+    task.status=0
+    task.save()
+    return True
+
 @spool(pass_arguments=True)
 def check_devices_for_update(*args, **kwargs):
     task=db_tasks.update_check_status()
+    if task.action=='cancel':
+        cancel_task('Firmware Check',task)
+        return False
     if not task.status:
         task.status=1
         task.save()
@@ -70,7 +80,7 @@ def check_devices_for_update(*args, **kwargs):
                     if not qres.get("reason",False):
                         res.append(qres)
                     else:
-                        db_events.connection_event(dev.id,qres["reason"])
+                        db_events.connection_event(qres['id'],'Firmware updater',qres.get("detail","connection"),"Critical",0,qres.get("reason","problem in Frimware updater"))
                 db_device.update_devices_firmware_status(res)
         except Exception as e:
             log.error(e)
@@ -85,6 +95,9 @@ def check_devices_for_update(*args, **kwargs):
 @spool(pass_arguments=True)
 def update_device(*args, **kwargs):
     task=db_tasks.update_job_status()
+    if task.action=='cancel':
+        cancel_task('Firmware Update',task)
+        return False
     if not task.status:
         task.status=1
         task.save()
@@ -127,6 +140,9 @@ def update_device(*args, **kwargs):
 @spool(pass_arguments=True)
 def download_firmware(*args, **kwargs):
     task=db_tasks.downloader_job_status()
+    if task.action=='cancel':
+        cancel_task('Firmware Download',task)
+        return False
     if not task.status:
         task.status=1
         task.save()
@@ -144,21 +160,29 @@ def download_firmware(*args, **kwargs):
                     t.join()
                 res=[]
                 for _ in range(num_threads):
+                    action=db_tasks.downloader_job_status().action
+                    if action=='cancel':
+                        cancel_task('Firmware Download',task)
+                        return False
                     qres=q.get()
-                print(qres)
                 # db_device.update_devices_firmware_status(res)
         except Exception as e:
             log.error(e)
             task.status=0
+            task.action='None'
             task.save()
             return False
     task.status=0
+    task.action='None'
     task.save()
     return False
 
 @spool(pass_arguments=True)
 def backup_devices(*args, **kwargs):
     task=db_tasks.backup_job_status()
+    if task.action=='cancel':
+        cancel_task('Backup',task)
+        return False
     if not task.status:
         task.status=1
         task.save()
@@ -258,6 +282,9 @@ def scan_with_mac(timer=2):
 def scan_with_ip(*args, **kwargs):
     try:
         task=db_tasks.scanner_job_status()
+        if task.action=='cancel':
+            cancel_task('IP Scan',task)
+            return False
         task.status=1
         task.save()
         start_ip=kwargs.get('start',False)
@@ -281,14 +308,15 @@ def scan_with_ip(*args, **kwargs):
         end_ip = ipaddress.IPv4Address(end_ip)
         scan_port=kwargs.get('port',False)
         default_user,default_pass=util.get_default_user_pass()
-        log.error("stating scan ")
+        log.error("starting scan ")
         mikrotiks=[]
         scan_results=[]
         dev_number=0
-
- 
-        
-        for ip_int in range(int(start_ip), int(end_ip)):
+        for ip_int in range(int(start_ip), int(end_ip)+1):
+            task=db_tasks.scanner_job_status()
+            if task.action=='cancel':
+                cancel_task('IP Scan',task)
+                return False
             ip=str(ipaddress.IPv4Address(ip_int))
             sock = socket.socket(socket.AF_INET, socket.SOCK_STREAM)
             sock.settimeout(0.2)
@@ -438,6 +466,9 @@ def scan_with_ip(*args, **kwargs):
 @spool(pass_arguments=True)
 def exec_snipet(*args, **kwargs):
     task=db_tasks.exec_snipet_status()
+    if task.action=='cancel':
+        cancel_task('Snipet Exec',task)
+        return False
     if not task.status:
         task.status=1
         task.save()
@@ -458,7 +489,6 @@ def exec_snipet(*args, **kwargs):
                 num_threads = len(devs)
                 q = queue.Queue()
                 threads = []
-                log.error(devs)
                 for dev in devs:
                     peer_ip=dev.peer_ip if dev.peer_ip else default_ip
                     if not peer_ip and '[mikrowizard]' in taskdata['snippet']['code']:
@@ -495,6 +525,11 @@ def exec_snipet(*args, **kwargs):
 def exec_vault(*args, **kwargs):
     Tasks=db_tasks.Tasks
     task=Tasks.select().where(Tasks.signal == 170).get()
+    if(task.action=='cancel'):
+        cancel_task('Vault Exec',task)
+        return False
+    if not ISPRO:
+        return False
     if not task.status:
         try:
             task.status=1

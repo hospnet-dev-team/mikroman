@@ -16,6 +16,7 @@ import os
 import hashlib
 import zipfile
 import subprocess
+import json
 log = logging.getLogger("Updater_mule")
 import pip
 
@@ -67,6 +68,7 @@ def check_sha256(filename, expect):
         return False
 
 def extract_zip_reload(filename,dst):
+    return True
     """Extract the contents of the zip file "filename" to the directory
     "dst". Then reload the updated modules."""
     with zipfile.ZipFile(filename, 'r') as zip_ref:
@@ -114,6 +116,14 @@ def main():
         print("Running hourly Update checker ...")
         interfaces = util.get_ethernet_wifi_interfaces()
         hwid = util.generate_serial_number(interfaces)
+        update_mode=db_sysconfig.get_sysconfig('update_mode')
+        update_mode=json.loads(update_mode)
+        if update_mode['mode']=='manual':
+            if not update_mode['update_back']:
+                hwid=hwid+"MANUAL"
+            else:
+                update_mode['update_back']=False
+                db_sysconfig.set_sysconfig('update_mode',json.dumps(update_mode))
         username=False
         try:
             username = db_sysconfig.get_sysconfig('username')

@@ -11,7 +11,7 @@ import time
 import uuid
 import socket
 import config
-from libs.db import db_sysconfig,db_firmware,db_backups,db_events
+from libs.db import db_sysconfig,db_firmware,db_tasks,db_events
 from cryptography.fernet import Fernet 
 from libs.check_routeros.routeros_check.resource import RouterOSCheckResource
 from libs.check_routeros.routeros_check.helper import  RouterOSVersion
@@ -37,26 +37,31 @@ except ImportError:
 import zipfile
 
 def extract_from_link(link,all_package=False):
-    if all_package:
-        regex = r"https:\/\/download\.mikrotik\.com\/routeros\/(\d{1,3}.*)?\/all_packages-(.*)-(.*).zip"
-        matches = re.match(regex, link)
-        if not matches:
-            return False
-        res=matches.groups()
-        version=res[0]
-        arch = res[1]
-        return {"link":link, "arch":arch, "version":version, "all_package":True}
-    else:
-        regex = r"https:\/\/download\.mikrotik\.com\/routeros\/(\d{1,3}.*)?\/routeros-(.*).npk"
-        matches = re.match(regex,link)
-        res=matches.groups()
-        version=res[0]
-        arch = res[1].replace(version, "")
-        if arch == "":
-            arch = "x86"
+    try:
+        if all_package:
+            regex = r"https:\/\/download\.mikrotik\.com\/routeros\/(\d{1,3}.*)?\/all_packages-(.*)-(.*).zip"
+            matches = re.match(regex, link)
+            if not matches:
+                return False
+            res=matches.groups()
+            version=res[0]
+            arch = res[1]
+            return {"link":link, "arch":arch, "version":version, "all_package":True}
         else:
-            arch=arch.replace("-","")
-        return {"link":link,"arch":arch, "version":version}
+            regex = r"https:\/\/download\.mikrotik\.com\/routeros\/(\d{1,3}.*)?\/routeros-(.*).npk"
+            matches = re.match(regex,link)
+            res=matches.groups()
+            version=res[0]
+            arch = res[1].replace(version, "")
+            if arch == "":
+                arch = "x86"
+            else:
+                arch=arch.replace("-","")
+            return {"link":link,"arch":arch, "version":version}
+    except Exception as e:
+        log.info("unable to extract from link : {}".format(link))
+        log.info(e)
+        return False
     
 
 def get_mikrotik_latest_firmware_link():
@@ -68,6 +73,8 @@ def get_mikrotik_latest_firmware_link():
             link=str(link.get('href'))
             if ".npk" in link:
                 frimware=extract_from_link(link)
+                if not frimware:
+                    continue
                 firms.setdefault(frimware["version"],{})
                 firms[frimware["version"]][frimware["arch"]]={"link":frimware["link"],"mark":"latest"}
                 # firms.append(link)
@@ -87,7 +94,10 @@ def get_mikrotik_download_links(version,all_package=False):
                 lnk=str(link[0].get('href'))
                 sha=str(link[1].get('data-checksum-sha256'))
                 if ".npk" in lnk:
+                    log.error(lnk)
                     frimware=extract_from_link(lnk)
+                    if not frimware:
+                        continue
                     firms.setdefault(frimware["version"], {})
                     firms[frimware["version"]][frimware["arch"]]={"link":frimware["link"],"sha":sha}
                     # firms.append(link)
@@ -206,6 +216,12 @@ def download_firmware_to_repository(version,q,arch="all",all_package=False):
         links=links[version]
         firm=db_firmware.Firmware()
         for lnk in links:
+            task=db_tasks.downloader_job_status()
+            if task.action=="cancel":
+                log.info("Firmware Download Task Canceled")
+                if q:
+                    q.put({"status":False})
+                return False
             if all_package and arch+"-allpackage" == lnk:
                 arch_togo=lnk
                 link=links[lnk]["link"]
