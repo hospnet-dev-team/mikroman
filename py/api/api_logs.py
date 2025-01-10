@@ -398,8 +398,8 @@ def dashboard_stats():
             pass
     except:
         pass
-    res['front_update_available']=True
-    res['update_available']=True
+    # res['front_update_available']=True
+    # res['update_available']=True
     if username:
         res['username']=username
     res['blog']=[]
