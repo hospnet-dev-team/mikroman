@@ -321,8 +321,6 @@ def update_device(dev,q):
     if ISPRO:
         firm,firm2=utilpro.safe_check(dev,_installed_version,ver_to_install)
     elif arch and arch!='':
-        log.warning(ver_to_install)
-        log.warning(arch)
         firm=db_firmware.get_frim_by_version(ver_to_install, arch)
     else:
         q.put({"id": dev.id})
@@ -345,16 +343,17 @@ def update_device(dev,q):
         return False
     
     for res in results:
-        log.error(res['name'])
         if res['name']!="routeros":
             package=db_firmware.get_frim_by_version(ver_to_install, "{}-{}".format(arch,res['name']))
             if package:
                 packages.append(package)
-    log.error(packages)
-    # q.put({"id": dev.id})
-    # return False
 
     try:
+        #Try to take a backup from the router before update
+        try:
+            util.backup_router(dev)
+        except:
+            pass
         apply_firmware(packages, firm2, arch, dev, router, events, q)
     except:
         q.put({"id": dev.id})
