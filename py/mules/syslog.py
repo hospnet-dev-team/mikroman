@@ -22,7 +22,6 @@ except ImportError:
     ISPRO=False
     pass
 
-import socketserver
 
 class SyslogUDPHandler(socketserver.BaseRequestHandler):
     def extract_data_from_regex(self,regex,line):
@@ -95,6 +94,8 @@ class SyslogUDPHandler(socketserver.BaseRequestHandler):
                     
             elif 'system,info mikrowizard' in message:
                 regex= r"system,info mikrowizard\d+: (.*) (changed|added|removed|unscheduled) by (winbox-\d.{1,3}\d\/.*\(winbox\)|mac-msg\(winbox\)|tcp-msg\(winbox\)|ssh|telnet|api|api-ssl|.*\/web|ftp|www-ssl).*:(.*)@(.*) \((.*)\)"
+                #with new versions of mikrotik syslog is not sending the correct trace in message
+                buged_regex=r"system,info mikrowizard\d+: (.*) (changed|added|removed|unscheduled) by  \((.*)\)"
                 if re.match(regex, message):
                     info=self.extract_data_from_regex(regex, message)
                     address=info[4].split('/')
@@ -116,6 +117,10 @@ class SyslogUDPHandler(socketserver.BaseRequestHandler):
                     elif 'api' in info[2]:
                         ctype='api'
                     db_AA.Account.add_log(dev.id,  info[0], info[1], info[3],message,ctype, address[0], info[5])
+                elif re.match(buged_regex, message):
+                    info=self.extract_data_from_regex(buged_regex,message)
+                    db_AA.Account.add_log(dev.id, info[0], info[1],"Unknown (Mikrotik Bug)",message, config=info[2])
+                    log.error(info)
                 elif "rebooted" in message:
                     db_events.state_event(dev.id, "syslog", "Router Rebooted","info",1,info[0])
                 elif "resetting system configuration" in message:
