@@ -21,7 +21,12 @@ import uwsgi
 import signal
 log = logging.getLogger("Updater_mule")
 import pip
-
+try:
+    from libs import utilpro
+    ISPRO=True
+except ImportError:
+    ISPRO=False
+    pass
 def import_or_install(package):
     try:
         __import__(package)
@@ -102,17 +107,12 @@ def extract_zip_reload(filename,dst):
     os.remove(filename)
     #touch server reload file /app/reload
     masterpid=uwsgi.masterpid()
-    os.kill(masterpid, signal.SIGKILL)
+    if ISPRO:
+        os.kill(masterpid, signal.SIGKILL)
     Path('/app/reload').touch()
 
 def main():
     while True:
-        try:
-            from libs import utilpro
-            ISPRO=True
-        except ImportError:
-            ISPRO=False
-            pass
         next_hour = (time.time() // 3600 + 1) * 3600
         sleep_time = next_hour - time.time()
         # Code to be executed every hour
