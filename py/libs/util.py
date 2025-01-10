@@ -579,7 +579,7 @@ def check_update(options,router=False):
                 log.error(e)
             pass
         upgrade=False
-        if 'x86' not in result['board-name'] and result['current-firmware']!= result['upgrade-firmware'] and result['board-name']!='x86':
+        if 'x86' not in arch and result['current-firmware']!= result['upgrade-firmware'] and result['board-name']!='x86':
             upgrade=True
         if _latest_version and _installed_version < _latest_version:
             return True, _installed_version,arch,upgrade
