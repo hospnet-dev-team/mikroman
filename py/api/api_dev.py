@@ -106,7 +106,11 @@ def save_editform():
     peer_ip = input.get('peer_ip', False)
     name = input.get('name', False)
     try:
-        if db_device.update_device(devid, util.crypt_data(user_name), util.crypt_data(password), ip, peer_ip, name):
+        if password == "Password is Hidden":
+            password=False
+        else:
+            password=util.crypt_data(password)
+        if db_device.update_device(devid, util.crypt_data(user_name), password, ip, peer_ip, name):
             db_syslog.add_syslog_event(get_myself(), "Device", "Edit", get_ip(),get_agent(),json.dumps(input))
             return buildResponse({"result":"success"}, 200)
         else:
