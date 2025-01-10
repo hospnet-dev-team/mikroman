@@ -138,6 +138,8 @@ def update_device(devid, user_name, password, ip, peer_ip, name):
     if not device:
         return False
     try:
+        if not password:
+            password=device['password']
         query=Devices.update(user_name=user_name, password=password, ip=ip, peer_ip=peer_ip, name=name).where(Devices.id == devid)
         query.execute()
     except:
