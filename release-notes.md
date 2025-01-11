@@ -1,5 +1,23 @@
-# Release Notes  
 
+# Release Notes  
+## Version 1.0.6 - Firmware upgrade fix  
+
+### Bugs Fixed  
+
+- **Firmware Download:** 
+  - Resolved multiple bugs for frimware repository and download
+  - Resolved multiple bugs while applying updates to routers
+  - Fix CHR firmware updates
+- **Device Edit:** Fix password change in edit form when the user the password is not changed
+- **Syslog:** Added new regex for new versions of MikroTik the user trace (usernam/ip/connection) is not provided in logs and actions when setup wizards used in winbox/webfig (This is MikroTik bug and Already reported to MikroTik support ,Fix is comming)
+- **Dashboard** Fixed showing wrong update information for MikroWizard
+### New Features  
+- **Firmware Management:** 
+  - **Backup** : Now before any firmware update it will try to get a backup of router
+  - **Pakages update** : All packages is getting updated and not only the routeros
+  - **Wifi package  Update** :Now it should update wifi/radio enabled routers without problem
+
+---
 ## Version 1.0.5 - Major Improvements and Bug Fixes  
 
 We’re excited to announce the release of version 1.0.5! This update introduces new features, significant enhancements, and essential bug fixes to improve system functionality and user experience.  
