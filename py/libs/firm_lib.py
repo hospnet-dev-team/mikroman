@@ -318,6 +318,7 @@ def update_device(dev,q):
         pass
     #get correct firmware from db for updating
     firm=False
+    firm2=False
     if ISPRO:
         firm,firm2=utilpro.safe_check(dev,_installed_version,ver_to_install)
     elif arch and arch!='':
