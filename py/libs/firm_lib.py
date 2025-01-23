@@ -363,6 +363,9 @@ def apply_firmware(packages,firm2,arch,dev,router,events,q):
     dev.failed_attempt=dev.failed_attempt+1
     if dev.failed_attempt > 3:
         db_events.firmware_event(dev.id,"updater","Update Failed","Critical",0,"Unable to Update device")
+        dev.save()
+        q.put({"id": dev.id})
+        return False
     dev.status="updating"
     dev.save()
     try:
