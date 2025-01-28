@@ -112,7 +112,7 @@ def user_tasks_create():
         taskid=task.id
         crontab = CronTab(user=True)
         directory=Path(app.root_path).parent.absolute()
-        command = "python3 {}/task_run.py {}".format(directory,taskid)
+        command = "/usr/local/bin/python3 {}/task_run.py {}  >> /var/log/cron.log 2>&1".format(directory,taskid)
         comment = "MikroWizard task #" + "taskid:{};".format(taskid)
         jobs = crontab.find_comment(comment)
         if len(list(jobs)) > 0:
@@ -195,8 +195,8 @@ def user_tasks_edit():
             crontab.remove(jobs)
             crontab.write()
         job = crontab.new(command=command,comment=comment)
-        job.setall(cron)
-        crontab.write()
+        job.setall(cron) 
+        crontab.write() 
         db_syslog.add_syslog_event(get_myself(), "Task","Edit", get_ip(),get_agent(),json.dumps(input))
         return buildResponse([{'status': 'success',"taskid":taskid}],200)
     except Exception as e:
