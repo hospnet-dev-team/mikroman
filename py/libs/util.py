@@ -632,6 +632,8 @@ def run_snippet(dev, snippet):
                 result=ssh.exec_command(snippet)
                 if not result:
                     result="executed successfully"
+                if "no such item" in result:
+                    result=False
             except Exception as e:
                 log.error(e)
                 log_alert('ssh',dev,'During backup ssh error')
