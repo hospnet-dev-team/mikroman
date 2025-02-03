@@ -402,6 +402,8 @@ def dashboard_stats():
     # res['update_available']=True
     if username:
         res['username']=username
+    else:
+        res['username']=False
     res['blog']=[]
     noconnectiondata={
                 "content": "Unable to connect to mikrowizard.com! please check server connection",

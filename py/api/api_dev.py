@@ -8,12 +8,11 @@
 from flask import request,redirect ,session
 import datetime
 import html
-
 import config
 import re
 from libs.red import RedisDB
 from libs.webutil import app,buildResponse,login_required,get_myself,get_ip,get_agent
-from libs import util
+from libs import util,ping
 from libs.db import db_device,db_groups,db_user_group_perm,db_user_tasks,db_sysconfig,db_syslog
 import logging
 import json
@@ -299,12 +298,16 @@ def dev_info():
     res=db_device.get_device(devid)
     options=util.build_api_options(db_device.get_devices_by_id([res['id'],])[0])
     network_info=[]
+    res['online']=True
     try:
         if util.check_port(options['host'],options['port']):
             router=util.RouterOSCheckResource(options)
             network_info=util.get_network_data(router)
             del network_info['total']
+        else:
+            res['online']=False
     except:
+        res['online']=False
         pass
     interfaces=[]
     for iface in network_info:
@@ -325,6 +328,45 @@ def dev_info():
         log.error(e)
         return buildResponse({'status': 'failed'}, 200, error="Wrong Data")
         pass
+    try:
+        res['active_users']=[]
+        if res['online']:
+            res['active_users']=tuple(router.api("/user/active/print"))
+    except:
+        res['active_users']=[]
+    try:
+        res['ping']=ping.get_ping_results(res['ip'], 5, 1)
+    except Exception as e:
+        res['ping']=[]
+    return buildResponse(res,200)
+
+@app.route('/api/dev/kill_session', methods = ['POST'])
+@login_required(role='admin',perm={'device':'full'})
+def dev_kill_session():
+    """return dev info"""
+    input = request.json
+    devid=input.get('devid',False)
+    item=input.get('item',False)
+    if not devid or not isinstance(devid, int):
+        return buildResponse({'status': 'failed'},200,error="Wrong Data")
+    try:
+        dev=db_device.get_devices_by_id([devid,])[0]
+    except:
+        return buildResponse({'status': 'failed'},200,error="Wrong Data")
+    if not dev:
+        return buildResponse({'status': 'failed'},200,error="Wrong Data")
+    options=util.build_api_options(dev)
+    router=util.RouterOSCheckResource(options)
+    # active_users=tuple(router.api("/user/active/print"))
+    # if item in active_users:
+    try:
+        acturl=router.api.path("user","active")
+        res=tuple(acturl('request-logout', **{'.id': item['.id']}))
+        log.error(res)
+    except Exception as e:
+        log.error(e)
+        pass
+    res=tuple(router.api("/user/active/print"))
     return buildResponse(res,200)
 
 @app.route('/api/dev/sensors', methods = ['POST'])
