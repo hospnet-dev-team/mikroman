@@ -36,7 +36,6 @@ class RedisDB(object):
         self.r = redis.Redis(host='localhost', port=6379, db=0)
         self.delta = options.get('delta','')
 
-
     def create_sensor_rts(self,sensor):
         retention=self.retention
         if "rx" in sensor or "tx" in sensor:
@@ -137,3 +136,24 @@ class RedisDB(object):
                 pass
         return data
 
+
+    def store_data(self, device_id, key, command):
+        """
+        store data for specific key of specific command
+        """
+        redis_key = f"device:{device_id}:{key}"
+        
+        # Add the command to the list
+        self.r.rpush(redis_key, command.encode('utf-8'))
+        
+        # Trim the list to keep only the last 20 commands
+        # self.r.ltrim(redis_key, -20, -1)
+
+    def get_last_n_data(self, device_id, key, count=20):
+        """
+        Retrieves the last 'count' data executed for a specific device ID and key.
+        """
+        redis_key = f"device:{device_id}:{key}"
+        raw_commands = self.r.lrange(redis_key, -count, -1)
+        return [cmd.decode('utf-8') for cmd in raw_commands]
+        # return self.r.lrange(redis_key, -count, -1)

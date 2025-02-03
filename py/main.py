@@ -17,6 +17,7 @@ from api import api_backups
 from api import api_snippet
 try:
     from api import api_pro_api
+    from api import api_pro_api2
 except ImportError:
     pass
 
