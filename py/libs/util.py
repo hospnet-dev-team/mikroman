@@ -416,7 +416,6 @@ def check_syslog_config(dev,router,apply=False):
         if len(confs)!=3:
             if apply:
                 ids=[item.get('.id') for item in results if 'mikrowizard' in item.get('prefix')]
-                log.error(ids)
                 if len(ids):
                     call.remove(*ids)
                 keys=['critical','error','info']

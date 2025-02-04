@@ -1,5 +1,25 @@
-
 # Release Notes  
+
+## Version 1.0.8 Free / 1.1.0 Pro
+
+### New Features  
+- Router Ping Information: Added ping data to enhance connectivity monitoring.  
+- Active User Sessions: Device details page now displays current active users.  
+- Session Management: Introduced the ability to terminate active user sessions.  
+- Enhanced License Information: Dashboard now provides more detailed license-related insights.  
+- MikroTik Configuration Sync & Config Cloner (Pro): Introduced a new menu/page for configuration cloning/sync.  
+- DHCP Server & Lease History (Pro): DHCP server details along with historical lease information in device details.  
+
+### Improvements & Bug Fixes  
+- Async Syslog Server: The syslog server now utilizes asyncio for improved performance and efficiency.  
+- DHCP Log Handling: Enhanced processing of DHCP logs in the syslog system.  
+- Firmware Updater Fix: Resolved an issue where the firmware updater failed to retry properly.  
+---
+
+## Version 1.0.7 - Fast update
+- Firmware updater fix: Fix broken frimware update
+
+
 ## Version 1.0.6 - Firmware upgrade fix  
 
 ### Bugs Fixed  
